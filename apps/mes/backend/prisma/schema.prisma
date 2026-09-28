@@ -21,6 +21,7 @@ model Tenant {
   boms      Bom[]
   materials Material[]
   audits    AuditLog[]
+  aiSettings         AiProviderSettings?
 }
 
 model User {
@@ -217,4 +218,14 @@ model AiConversation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([tenantId, userId, updatedAt])
+}
+
+model AiProviderSettings {
+  tenantId      String   @id
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  model         String
+  baseUrl       String
+  keyCiphertext String
+  updatedBy     String
+  updatedAt     DateTime @updatedAt
 }

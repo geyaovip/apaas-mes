@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, Settings, UserRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PasswordSettings } from './PasswordSettings';
 import './account-dock.css';
 
-export function AccountDock({ name, email, role, onLogout }: { name: string; email?: string; role: string; onLogout: () => void }) {
+export function AccountDock({ name, email, role, onLogout, aiSettingsHref }: { name: string; email?: string; role: string; onLogout: () => void; aiSettingsHref?: string }) {
   const [open, setOpen] = useState(false);
   const dock = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -18,6 +19,7 @@ export function AccountDock({ name, email, role, onLogout }: { name: string; ema
       <div className="account-popover-head"><strong>{name}</strong><span>{email || role}</span></div>
       <div className="account-role">{role}</div>
       <div className="account-password"><PasswordSettings/></div>
+      {aiSettingsHref && <Link className="account-ai-link" role="menuitem" to={aiSettingsHref} onClick={() => setOpen(false)}><Settings size={17}/>模型接入</Link>}
       <button type="button" role="menuitem" onClick={onLogout}><LogOut size={17}/>退出登录</button>
     </div>}
     <button type="button" className="account-identity" aria-label={`${name}，打开账号菜单`} aria-expanded={open} onClick={() => setOpen(value => !value)}>

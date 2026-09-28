@@ -5,7 +5,8 @@ import { Actor, AppError, parse } from './common';
 import { PrismaService } from './prisma.service';
 import { BomService } from './bom.service';
 import { MesService } from './mes.service';
-import { AiTurn, aiConfigured, generateAiAnswer } from './ai-model';
+import { AiTurn, generateAiAnswer } from './ai-model';
+import { aiStatus, clearAiSettings, publicAiSettings, resolveAiConnection, saveAiSettings, testAiSettings } from './ai-settings';
 
 const chatInput = z.object({ conversation_id: z.string().uuid().optional(), context_type: z.enum(['dashboard', 'bom', 'plan']), context_id: z.string().uuid().optional(), message: z.string().trim().min(2).max(2000) });
 type ContextType = z.infer<typeof chatInput>['context_type'];
@@ -18,7 +19,14 @@ const reviewFormat = { name: 'bom_review', schema: { type: 'object', additionalP
 @Injectable()
 export class AiService {
   constructor(private db: PrismaService, private boms: BomService, private mes: MesService) {}
-  status() { return { configured: aiConfigured(), provider: aiConfigured() ? 'OpenAI' : null }; }
+  status(actor: Actor) { return aiStatus(this.db, actor.tenantId); }
+  settings(actor: Actor) { return publicAiSettings(this.db, actor); }
+  saveSettings(actor: Actor, body: unknown) { return saveAiSettings(this.db, actor, body); }
+  testSettings(actor: Actor, body: unknown) { return testAiSettings(this.db, actor, body); }
+  clearSettings(actor: Actor) { return clearAiSettings(this.db, actor); }
+  private async answer(actor: Actor, instructions: string, context: unknown, turns: AiTurn[], format?: { name: string; schema: Record<string, unknown> }) {
+    return generateAiAnswer(await resolveAiConnection(this.db, actor.tenantId), instructions, context, turns, format);
+  }
 
   private async context(actor: Actor, type: ContextType, id?: string) {
     if (type !== 'dashboard' && !id) throw new AppError('VALIDATION_ERROR', '请选择业务记录后再提问', 400);
@@ -67,7 +75,7 @@ export class AiService {
     const bom = await this.boms.get(actor, id);
     if (bom.version !== input.version) throw new AppError('VERSION_CONFLICT', 'BOM 已更新，请刷新后重试', 409);
     const source = await this.context(actor, 'bom', id);
-    const raw = await generateAiAnswer('你是电子制造 BOM 审查助手。对照当前版、上一已发布版和物料档案，指出有依据的变更风险；没有证据时 issues 返回空数组。每条 issue 的 bom_item_id 必须是输入中当前或上一版的真实行 ID。不得声称已修改或发布 BOM。', source.data, [{ role: 'user', content: '请审查这个 BOM 版本。' }], reviewFormat);
+    const raw = await this.answer(actor, '你是电子制造 BOM 审查助手。对照当前版、上一已发布版和物料档案，指出有依据的变更风险；没有证据时 issues 返回空数组。每条 issue 的 bom_item_id 必须是输入中当前或上一版的真实行 ID。不得声称已修改或发布 BOM。', source.data, [{ role: 'user', content: '请审查这个 BOM 版本。' }], reviewFormat);
     let parsed: unknown;
     try { parsed = JSON.parse(raw); } catch { throw new AppError('AI_INVALID_OUTPUT', 'AI 审查结果格式无效，请重试', 502); }
     const result = reviewSchema.safeParse(parsed);
@@ -77,7 +85,7 @@ export class AiService {
     if (result.data.issues.some(issue => !allowed.has(issue.bom_item_id))) throw new AppError('AI_INVALID_OUTPUT', 'AI 审查引用了不存在的 BOM 行，请重试', 502);
     const current = await this.boms.get(actor, id);
     if (current.version !== input.version) throw new AppError('VERSION_CONFLICT', 'BOM 审查期间已更新，请重新审查', 409);
-    await this.db.auditLog.create({ data: { tenantId: actor.tenantId, actorId: actor.id, action: 'ai.bom_review', resourceType: 'bom', resourceId: id, detail: { version: bom.version, revision: bom.revision, model: process.env.OPENAI_MODEL, review: result.data } as Prisma.InputJsonValue } });
+    await this.db.auditLog.create({ data: { tenantId: actor.tenantId, actorId: actor.id, action: 'ai.bom_review', resourceType: 'bom', resourceId: id, detail: { version: bom.version, revision: bom.revision, model: (await resolveAiConnection(this.db, actor.tenantId))?.model, review: result.data } as Prisma.InputJsonValue } });
     return { review: result.data, reviewed_at: new Date().toISOString() };
   }
   async chat(actor: Actor, body: unknown) {
@@ -87,7 +95,7 @@ export class AiService {
     if (old && (old.contextType !== input.context_type || old.contextId !== (input.context_id || null))) throw new AppError('AI_CONTEXT_CHANGED', '业务对象已切换，请新建对话', 409);
     const history = (old?.messages || []) as AiTurn[];
     const prompt = [...history, { role: 'user' as const, content: input.message }];
-    const answer = await generateAiAnswer('你是电子制造 MES 助手。重点支持 BOM 版本复核。比较新旧组件、用量、损耗率和物料主数据状态；指出可核实的问题、对应组件 SKU 与建议。没有库存与领退料数据，不能推断缺料。所有发布和生产操作须人工完成。', { source: source.title, data: source.data }, prompt);
+    const answer = await this.answer(actor, '你是电子制造 MES 助手。重点支持 BOM 版本复核。比较新旧组件、用量、损耗率和物料主数据状态；指出可核实的问题、对应组件 SKU 与建议。没有库存与领退料数据，不能推断缺料。所有发布和生产操作须人工完成。', { source: source.title, data: source.data }, prompt);
     const messages = [...prompt, { role: 'assistant' as const, content: answer }].slice(-20);
     let conversation;
     if (old) {
@@ -95,7 +103,7 @@ export class AiService {
       if (!changed.count) throw new AppError('VERSION_CONFLICT', '对话已更新，请刷新后重试', 409);
       conversation = await this.db.aiConversation.findUniqueOrThrow({ where: { id: old.id } });
     } else conversation = await this.db.aiConversation.create({ data: { tenantId: actor.tenantId, userId: actor.id, contextType: input.context_type, contextId: input.context_id, title: source.title, messages: messages as Prisma.InputJsonValue } });
-    await this.db.auditLog.create({ data: { tenantId: actor.tenantId, actorId: actor.id, action: 'ai.chat', resourceType: 'ai_conversation', resourceId: conversation.id, detail: { contextType: input.context_type, contextId: input.context_id || null, model: process.env.OPENAI_MODEL } } });
+    await this.db.auditLog.create({ data: { tenantId: actor.tenantId, actorId: actor.id, action: 'ai.chat', resourceType: 'ai_conversation', resourceId: conversation.id, detail: { contextType: input.context_type, contextId: input.context_id || null, model: (await resolveAiConnection(this.db, actor.tenantId))?.model } } });
     return { conversation_id: conversation.id, answer, messages, sources: [{ title: source.title, href: source.href }] };
   }
 }

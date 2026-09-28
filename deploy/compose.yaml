@@ -25,6 +25,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      AI_CONFIG_ENCRYPTION_KEY: ${AI_CONFIG_ENCRYPTION_KEY:?Missing AI_CONFIG_ENCRYPTION_KEY}
+      AI_ALLOW_INSECURE_BASE_URL: ${AI_ALLOW_INSECURE_BASE_URL:-false}
     depends_on:
       db: { condition: service_healthy }
     healthcheck:
