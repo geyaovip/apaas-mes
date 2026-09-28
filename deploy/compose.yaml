@@ -1,0 +1,43 @@
+name: apaas-mes
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mes
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run node scripts/init-local.mjs}
+      POSTGRES_DB: mes
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U mes -d mes"]
+      interval: 5s
+      retries: 20
+  api:
+    build: { context: .., dockerfile: deploy/Dockerfile.api }
+    environment:
+      DATABASE_URL: postgresql://mes:${DB_PASSWORD}@db:5432/mes?schema=public
+      HOST: 0.0.0.0
+      PORT: "4401"
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:4400}
+      MES_BOOTSTRAP_EMAIL: ${ADMIN_EMAIL:?Missing ADMIN_EMAIL}
+      MES_BOOTSTRAP_PASSWORD: ${ADMIN_PASSWORD:?Missing ADMIN_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4401/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+  web:
+    build: { context: .., dockerfile: deploy/Dockerfile.web }
+    ports: ["127.0.0.1:${WEB_PORT:-4400}:80"]
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+volumes:
+  db-data:

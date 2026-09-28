@@ -1,0 +1,21 @@
+name: API image
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Linux image
+        run: docker build -f deploy/Dockerfile.api -t apaas-mes-api:${{ github.sha }} .
+      - name: Export image
+        run: docker save apaas-mes-api:${{ github.sha }} | gzip -1 > api-image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-image-${{ github.sha }}
+          path: api-image.tar.gz
+          if-no-files-found: error
+          retention-days: 7

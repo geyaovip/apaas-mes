@@ -1,0 +1,16 @@
+{
+  "name": "apaas-mes",
+  "private": true,
+  "packageManager": "pnpm@11.2.2",
+  "scripts": {
+    "dev:mes:api": "pnpm --filter @apaas/mes-backend dev",
+    "dev:mes:web": "pnpm --filter @apaas/mes-frontend dev",
+    "build:mes": "pnpm --filter @apaas/mes-backend build && pnpm --filter @apaas/mes-frontend build",
+    "test:mes": "pnpm --filter @apaas/mes-backend test:e2e",
+    "local:seed": "pnpm --filter @apaas/mes-backend local:seed",
+    "setup:local": "node scripts/init-local.mjs",
+    "start:local": "node scripts/start-local.mjs",
+    "backup:local": "node scripts/backup-local.mjs",
+    "deploy:cloudflare": "pnpm --filter @apaas/mes-frontend build && npx --yes wrangler@4.142.0 deploy"
+  }
+}

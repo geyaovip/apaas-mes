@@ -1,0 +1,10 @@
+.git
+.github
+.publish
+**/node_modules
+**/dist
+**/src/generated
+**/.env
+.env
+backups
+*.log

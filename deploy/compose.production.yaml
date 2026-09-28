@@ -1,0 +1,44 @@
+name: apaas-mes
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mes
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Missing DB_PASSWORD}
+      POSTGRES_DB: mes
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U mes -d mes"]
+      interval: 10s
+      retries: 12
+    mem_limit: 128m
+    restart: unless-stopped
+  apaas-mes-api:
+    image: ${API_IMAGE:?Missing API_IMAGE}
+    environment:
+      DATABASE_URL: postgresql://mes:${DB_PASSWORD}@db:5432/mes?schema=public
+      HOST: 0.0.0.0
+      PORT: "4401"
+      COOKIE_SECURE: "true"
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Missing FRONTEND_ORIGIN}
+      MES_BOOTSTRAP_EMAIL: ${ADMIN_EMAIL:?Missing ADMIN_EMAIL}
+      MES_BOOTSTRAP_PASSWORD: ${ADMIN_PASSWORD:?Missing ADMIN_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4401/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      retries: 12
+      start_period: 30s
+    mem_limit: 256m
+    networks: [default, gateway]
+    restart: unless-stopped
+volumes:
+  db-data:
+networks:
+  gateway:
+    external: true
+    name: ${API_GATEWAY_NETWORK:?Missing API_GATEWAY_NETWORK}

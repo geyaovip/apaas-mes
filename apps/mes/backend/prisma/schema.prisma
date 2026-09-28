@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  sessions  Session[]
+  plans     ProductionPlan[]
+  orders    WorkOrder[]
+  reports   WorkReport[]
+  boms      Bom[]
+  materials Material[]
+  audits    AuditLog[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String
+  name         String
+  passwordHash String
+  role         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  sessions     Session[]
+  assigned     WorkOrder[] @relation("AssignedOperator")
+  reports      WorkReport[] @relation("Reporter")
+  reviews      WorkReport[] @relation("Reviewer")
+  @@unique([tenantId, email])
+  @@index([tenantId, role])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model ProductionPlan {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  code       String
+  product    String
+  productSku String
+  productMaterialId String?
+  productMaterial Material? @relation("PlanProduct", fields: [productMaterialId], references: [id])
+  bomId      String?
+  bom        Bom?     @relation(fields: [bomId], references: [id])
+  targetQty  Int
+  dueAt      DateTime
+  status     String   @default("draft")
+  note       String?
+  version    Int      @default(1)
+  createdBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  orders     WorkOrder[]
+  materials  PlanMaterial[]
+  @@unique([tenantId, code])
+  @@index([tenantId, status, dueAt])
+}
+
+model Bom {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  productSku  String
+  productName String
+  productMaterialId String?
+  productMaterial Material? @relation("BomProduct", fields: [productMaterialId], references: [id])
+  revision    Int
+  status      String   @default("draft")
+  note        String?
+  version     Int      @default(1)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  releasedAt  DateTime?
+  items       BomItem[]
+  plans       ProductionPlan[]
+  @@unique([tenantId, productSku, revision])
+  @@index([tenantId, status, productSku])
+}
+
+model Material {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  sku         String
+  name        String
+  kind        String   @default("raw")
+  unit        String   @default("件")
+  description String?
+  active      Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  bomProducts Bom[]    @relation("BomProduct")
+  bomComponents BomItem[] @relation("BomComponent")
+  planRequirements PlanMaterial[] @relation("PlanRequirement")
+  planProducts ProductionPlan[] @relation("PlanProduct")
+  @@unique([tenantId, sku])
+  @@index([tenantId, active, name])
+}
+
+model BomItem {
+  id             String  @id @default(uuid())
+  bomId          String
+  bom            Bom     @relation(fields: [bomId], references: [id])
+  componentSku   String
+  componentName  String
+  materialId     String?
+  material       Material? @relation("BomComponent", fields: [materialId], references: [id])
+  unit           String  @default("件")
+  quantityPerUnit Decimal @db.Decimal(18,3)
+  scrapRate      Decimal @default(0) @db.Decimal(5,2)
+  @@unique([bomId, componentSku])
+}
+
+model PlanMaterial {
+  id            String @id @default(uuid())
+  tenantId      String
+  planId        String
+  plan          ProductionPlan @relation(fields: [planId], references: [id])
+  componentSku  String
+  componentName String
+  materialId    String?
+  material      Material? @relation("PlanRequirement", fields: [materialId], references: [id])
+  unit          String
+  requiredQty   Decimal @db.Decimal(18,3)
+  @@unique([planId, componentSku])
+  @@index([tenantId, planId])
+}
+
+model WorkOrder {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  planId        String
+  plan          ProductionPlan @relation(fields: [planId], references: [id])
+  code          String
+  operation     String
+  targetQty     Int
+  goodQty       Int      @default(0)
+  defectQty     Int      @default(0)
+  status        String   @default("released")
+  assigneeId    String
+  assignee      User     @relation("AssignedOperator", fields: [assigneeId], references: [id])
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reports       WorkReport[]
+  @@unique([tenantId, code])
+  @@index([tenantId, assigneeId, status])
+  @@index([tenantId, planId])
+}
+
+model WorkReport {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  orderId    String
+  order      WorkOrder @relation(fields: [orderId], references: [id])
+  goodQty    Int
+  defectQty  Int
+  note       String?
+  status     String   @default("pending")
+  reporterId String
+  reporter   User     @relation("Reporter", fields: [reporterId], references: [id])
+  reviewerId String?
+  reviewer   User?    @relation("Reviewer", fields: [reviewerId], references: [id])
+  reason     String?
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+  @@index([tenantId, orderId, status])
+  @@index([tenantId, status, createdAt])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  actorId      String
+  action       String
+  resourceType String
+  resourceId   String
+  detail       Json?
+  createdAt    DateTime @default(now())
+  @@index([tenantId, resourceType, resourceId, createdAt])
+}
+
+model AiConversation {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  contextType String
+  contextId   String?
+  title       String
+  messages    Json     @default("[]")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([tenantId, userId, updatedAt])
+}
