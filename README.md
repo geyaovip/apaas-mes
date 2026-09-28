@@ -52,7 +52,7 @@ node scripts/backup-local.mjs
 
 ## AI 配置与边界
 
-管理员在左下角账号菜单进入“模型接入”，填写兼容 OpenAI Responses API 的 API 根地址、模型名称和 API Key，可先测试再保存。密钥在服务端加密保存，页面不回显；部署时必须设置并长期保管 `AI_CONFIG_ENCRYPTION_KEY`。也可在 API 服务端配置 `OPENAI_API_KEY`、`OPENAI_MODEL` 和可选的 `OPENAI_BASE_URL` 作为默认值。未接入兼容 OpenAI Responses API 的模型时，制造业务仍可使用，AI 入口会提示未启用。BOM 审查结果引用当前版本的组件行，作为人工复核建议；不会自动发布 BOM、修改计划或审核报工。参见[AI 能力与数据边界](docs/06-AI能力实施规划.md)。
+管理员在左下角账号菜单进入“模型接入”，填写兼容 OpenAI Responses API 的 API 根地址、模型名称和 API Key，可先测试再保存。密钥在服务端加密保存，页面不回显；本地初始化脚本会生成随机密钥；其他部署方式需生成并长期保管 `AI_CONFIG_ENCRYPTION_KEY`（可运行 `openssl rand -hex 32`）。也可在 API 服务端配置 `OPENAI_API_KEY`、`OPENAI_MODEL` 和可选的 `OPENAI_BASE_URL` 作为默认值。未接入兼容 OpenAI Responses API 的模型时，制造业务仍可使用，AI 入口会提示未启用。BOM 审查结果引用当前版本的组件行，作为人工复核建议；不会自动发布 BOM、修改计划或审核报工。参见[AI 能力与数据边界](docs/06-AI能力实施规划.md)。
 
 ## 开发与验证
 
