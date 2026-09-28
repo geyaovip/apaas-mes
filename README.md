@@ -2,6 +2,8 @@
 
 轻量 MES 是可独立部署的前后端业务系统。源码位于 [apps/mes](apps/mes/)，包含 NestJS API、React 前端、Prisma 迁移和业务文档。核心业务使用本地账号，不依赖办公平台登录。具体功能范围见[应用说明](apps/mes/README.md)。
 
+公网入口：[https://apaas-mes.492746023.workers.dev](https://apaas-mes.492746023.workers.dev)。该入口使用本仓库的 Cloudflare Worker 前端和独立部署在云服务器上的 API、PostgreSQL。线上管理员凭据保存在服务器的 `/opt/apaas/apaas-mes/.env`；首次登录工作区为 `default`。本仓库不会包含线上凭据或业务数据。
+
 ## 本地安装
 
 需要 Node.js 22、Docker Engine/Desktop 和 Compose。克隆本仓库后运行：
