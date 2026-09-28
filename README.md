@@ -28,7 +28,7 @@ node scripts/init-local.mjs
 node scripts/start-local.mjs
 ```
 
-打开 [http://localhost:4400](http://localhost:4400)，工作区填写 `default`。管理员账号和密码位于根目录权限受限的 `.env`；首次登录后建议修改密码。重复初始化不会覆盖已有 `.env`。
+打开 [http://localhost:4400](http://localhost:4400)，使用该应用的管理员凭据登录。管理员账号和密码位于根目录权限受限的 `.env`；首次登录后建议修改密码。重复初始化不会覆盖已有 `.env`。
 
 ```bash
 docker compose --env-file .env -f deploy/compose.yaml ps
