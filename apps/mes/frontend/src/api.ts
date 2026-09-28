@@ -1,5 +1,5 @@
 export type Role = 'admin'|'planner'|'supervisor'|'operator';
-export interface Session { user: { id: string; tenantId: string; name: string; role: Role }; tenant: { slug: string; name: string } }
+export interface Session { user: { id: string; tenantId: string; name: string; email?: string; role: Role }; tenant: { slug: string; name: string } }
 export interface User { id: string; name: string; email?: string; role: Role; active?: boolean }
 export interface CatalogMaterial { id: string; sku: string; name: string; kind: string; unit: string; description?: string; active: boolean; version: number }
 export interface Material { id: string; materialId?: string; componentSku: string; componentName: string; unit: string; requiredQty: string }

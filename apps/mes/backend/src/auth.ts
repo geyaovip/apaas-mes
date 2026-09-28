@@ -18,7 +18,7 @@ export class AuthController {
     const token = randomBytes(32).toString('base64url');
     await this.db.session.create({ data: { tenantId: tenant!.id, userId: user.id, tokenHash: hash(token), expiresAt: new Date(Date.now() + sessionMs) } });
     res.cookie('mes_session', token, { httpOnly: true, secure: process.env.COOKIE_SECURE !== 'false', sameSite: 'strict', path: '/', maxAge: sessionMs });
-    return { user: { id: user.id, name: user.name, role: user.role }, tenant: { slug: tenant!.slug, name: tenant!.name } };
+    return { user: { id: user.id, name: user.name, email: user.email, role: user.role }, tenant: { slug: tenant!.slug, name: tenant!.name } };
   }
   @UseGuards(SessionGuard) @Post('auth/logout') async logout(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response) { await this.db.session.deleteMany({ where: { tenantId: req.actor.tenantId, tokenHash: hash(req.cookies.mes_session) } }); res.clearCookie('mes_session', { path: '/' }); return { ok: true }; }
   @UseGuards(SessionGuard) @Post('auth/password') async changePassword(@Req() req: AuthRequest, @Body() body: unknown, @Res({ passthrough: true }) res: Response) {

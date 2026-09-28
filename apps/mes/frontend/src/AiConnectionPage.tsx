@@ -7,7 +7,7 @@ import './ai-connection.css';
 
 type Settings = { configured: boolean; source: 'workspace' | 'environment' | 'none'; model: string; base_url: string; has_key: boolean; can_edit: boolean; updated_at: string | null };
 
-export function AiConnectionPage() {
+export function AiConnectionPage({ embedded = false }: { embedded?: boolean }) {
   const [saved, setSaved] = useState<Settings | null>(null);
   const [model, setModel] = useState('');
   const [baseUrl, setBaseUrl] = useState('https://api.openai.com/v1');
@@ -39,8 +39,8 @@ export function AiConnectionPage() {
     } catch (e) { setError(errorText(e)); if (kind === 'test') setTested(false); }
     finally { setBusy(false); }
   }
-  return <div className="ai-config-page">
-    <div className="ai-config-heading"><h1>模型接入</h1><p>配置兼容 OpenAI Responses API 的模型服务，供 AI 助手和业务建议使用。</p></div>
+  return <div className={embedded ? "ai-config-page embedded" : "ai-config-page"}>
+    <div className="ai-config-heading">{embedded ? <h2>模型接入</h2> : <h1>模型接入</h1>}<p>配置兼容 OpenAI Responses API 的模型服务，供 AI 助手和业务建议使用。</p></div>
     <section className="ai-config-card" aria-label="模型连接状态">
       <div className="ai-config-row"><strong>连接状态</strong><span className={`ai-config-status ${saved?.configured ? 'is-on' : ''}`}>{saved ? (saved.configured ? '已配置' : '未配置') : '读取中'}</span></div>
       {saved?.configured && <p className="ai-config-muted">当前模型：{saved.model} · 来源：{saved.source === 'workspace' ? '工作区设置' : '服务器环境变量'}</p>}

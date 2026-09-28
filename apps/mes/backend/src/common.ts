@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { PrismaService } from './prisma.service';
 
 export type Role = 'admin' | 'planner' | 'supervisor' | 'operator';
-export interface Actor { id: string; tenantId: string; name: string; role: Role }
+export interface Actor { id: string; tenantId: string; name: string; email?: string; role: Role }
 export interface AuthRequest extends Request { actor: Actor; requestId: string }
 export class AppError extends HttpException { constructor(public code: string, message: string, status = 422, public details: Record<string, unknown> = {}) { super(message, status); } }
 export function fail(code: string, message: string, status = 422): never { throw new AppError(code, message, status); }
@@ -24,7 +24,7 @@ export class SessionGuard implements CanActivate {
     if (!token || typeof token !== 'string') fail('UNAUTHENTICATED', '请先登录', 401);
     const session = await this.db.session.findUnique({ where: { tokenHash: hash(token) }, include: { user: true } });
     if (!session || session.expiresAt <= new Date() || !session.user.active) fail('UNAUTHENTICATED', '登录已失效，请重新登录', 401);
-    req.actor = { id: session.user.id, tenantId: session.tenantId, name: session.user.name, role: session.user.role as Role };
+    req.actor = { id: session.user.id, tenantId: session.tenantId, name: session.user.name, email: session.user.email, role: session.user.role as Role };
     return true;
   }
 }

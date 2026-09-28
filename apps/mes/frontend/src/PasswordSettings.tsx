@@ -1,20 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import './password-settings.css';
 
 export function PasswordSettings() {
-  const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) setOpen(false); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [open, busy]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -32,20 +24,14 @@ export function PasswordSettings() {
     finally { setBusy(false); }
   }
 
-  return <>
-    <button type="button" className="account-password-trigger" onClick={() => setOpen(true)}>修改密码</button>
-    {open && <div className="account-password-backdrop" onMouseDown={() => { if (!busy) setOpen(false); }}>
-      <section className="account-password-dialog" role="dialog" aria-modal="true" aria-label="修改密码" onMouseDown={event => event.stopPropagation()}>
-        <div className="account-password-head"><h2>修改密码</h2><button type="button" onClick={() => setOpen(false)} disabled={busy} aria-label="关闭">×</button></div>
-        <p>修改后，所有设备都需要使用新密码重新登录。</p>
-        <form onSubmit={submit}>
-          <label>当前密码<input autoFocus type="password" autoComplete="current-password" value={current} onChange={event => setCurrent(event.target.value)} required/></label>
-          <label>新密码<input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={next} onChange={event => setNext(event.target.value)} required/></label>
-          <label>确认新密码<input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={confirm} onChange={event => setConfirm(event.target.value)} required/></label>
-          {error && <p className="account-password-error" role="alert">{error}</p>}
-          <div className="account-password-actions"><button type="button" onClick={() => setOpen(false)} disabled={busy}>取消</button><button type="submit" disabled={busy}>{busy ? '保存中…' : '保存并重新登录'}</button></div>
-        </form>
-      </section>
-    </div>}
-  </>;
+  return <section className="password-panel" aria-labelledby="password-title">
+    <div className="password-panel-heading"><h2 id="password-title">修改密码</h2><p>保存后，其他设备上的会话也会失效。</p></div>
+    <form onSubmit={submit}>
+      <label>当前密码<input type="password" autoComplete="current-password" value={current} onChange={event => setCurrent(event.target.value)} required/></label>
+      <label>新密码<input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={next} onChange={event => setNext(event.target.value)} required/><small>至少 12 位</small></label>
+      <label>确认新密码<input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={confirm} onChange={event => setConfirm(event.target.value)} required/></label>
+      {error && <p className="password-error" role="alert">{error}</p>}
+      <div className="password-actions"><button type="submit" disabled={busy}>{busy ? '保存中…' : '保存并重新登录'}</button></div>
+    </form>
+  </section>;
 }
