@@ -117,4 +117,21 @@ export class MesService {
     const user = await this.db.user.create({ data: { tenantId: actor.tenantId, name: input.name, email: input.email.toLowerCase(), passwordHash, role: input.role } });
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   }
+  async updateUser(actor: Actor, userId: string, body: unknown) {
+    requireRole(actor, 'admin');
+    const input = parse(z.object({ role: z.enum(['admin', 'planner', 'supervisor', 'operator']).optional(), active: z.boolean().optional() }).refine(value => value.role !== undefined || value.active !== undefined), body);
+    const user = await this.db.user.findFirst({ where: { id: userId, tenantId: actor.tenantId } });
+    if (!user) fail('NOT_FOUND', '成员不存在', 404);
+    if (userId === actor.id && (input.active === false || (input.role && input.role !== 'admin'))) fail('SELF_CHANGE', '不能停用自己或移除自己的管理员角色', 409);
+    return this.db.$transaction(async tx => {
+      if (user.role === 'admin' && user.active && (input.active === false || (input.role && input.role !== 'admin'))) {
+        const admins = await tx.user.count({ where: { tenantId: actor.tenantId, role: 'admin', active: true } });
+        if (admins <= 1) fail('LAST_ADMIN', '至少保留一位在职管理员', 409);
+      }
+      const updated = await tx.user.update({ where: { id: userId }, data: { ...input } });
+      if (input.active === false || (input.role && input.role !== user.role)) await tx.session.deleteMany({ where: { tenantId: actor.tenantId, userId } });
+      await this.audit(tx, actor, 'user.updated', 'user', userId, { role_before: user.role, role_after: updated.role, active_before: user.active, active_after: updated.active });
+      return { id: updated.id, role: updated.role, active: updated.active };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
 }

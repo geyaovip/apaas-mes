@@ -21,6 +21,7 @@ export class MesController {
   @Get('dashboard') dashboard(@Req() r: AuthRequest) { return this.mes.dashboard(r.actor); }
   @Get('admin/users') users(@Req() r: AuthRequest) { return this.mes.listUsers(r.actor); }
   @Post('admin/users') createUser(@Req() r: AuthRequest, @Body() b: unknown) { return this.mes.createUser(r.actor, b); }
+  @Patch('admin/users/:id') updateUser(@Req() r: AuthRequest, @Param('id') id: string, @Body() b: unknown) { return this.mes.updateUser(r.actor, id, b); }
 }
 
 @Controller('api/v1/boms') @UseGuards(SessionGuard)
