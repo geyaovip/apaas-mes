@@ -52,13 +52,8 @@ function DashboardPage({ session }: { session: Session }) {
   const orders = useLoad<Page<Order>>('/orders?page=1&page_size=4');
   const canReview = ['admin', 'supervisor'].includes(session.user.role);
   const canPlan = ['admin', 'planner'].includes(session.user.role);
-  const shortcuts = canReview
-    ? [{ to: '/reviews', title: '审核报工', detail: `${data?.pending_reports ?? 0} 条待审核` }, { to: '/orders', title: '查看工单', detail: '跟进生产进度' }, { to: '/plans', title: '查看计划', detail: '核对排产与交期' }]
-    : canPlan
-      ? [{ to: '/materials', title: '维护物料', detail: '建立成品与组件档案' }, { to: '/boms', title: '管理 BOM', detail: '核对产品用料版本' }, { to: '/plans', title: '管理计划', detail: '发布计划并下达工单' }]
-      : [{ to: '/orders', title: '我的工单', detail: '查看分配给我的任务' }, { to: '/plans', title: '相关计划', detail: '查看交期与目标数量' }];
   return <div className="mes-dashboard">
-    <Header title="工作台" subtitle={`${session.user.name}，查看生产进度与待处理事项`}/>
+    <Header title="工作台" subtitle="生产进度与待处理事项"/>
     <Notice error={error}/>
     {loading && !data ? <div className="loading">正在加载…</div> : data && <>
       <div className="stat-grid">
@@ -67,14 +62,11 @@ function DashboardPage({ session }: { session: Session }) {
         {canReview ? <Link to="/reviews" className="stat-card"><span>待审核报工</span><strong>{data.pending_reports}</strong><small>前往审核</small><ArrowRight size={18}/></Link> : <div className="stat-card"><span>{session.user.role === 'operator' ? '我提交的待审核报工' : '待审核报工'}</span><strong>{data.pending_reports}</strong><small>审核后计入产量</small></div>}
       </div>
       <div className="mes-dashboard-grid">
-        <section className="panel mes-progress-panel"><div className="mes-panel-head"><h2>生产完成情况</h2><span>全部可查看工单</span></div><div className="big-number">{data.good_qty}<span>件合格</span></div><Progress done={data.good_qty} total={data.target_qty}/><div className="mes-progress-facts"><div><span>工单目标</span><strong>{data.target_qty} 件</strong></div><div><span>已审核不良</span><strong>{data.defect_qty} 件</strong></div></div><p className="muted">{data.definition}。</p></section>
-        <section className="panel mes-shortcuts"><div className="mes-panel-head"><h2>常用入口</h2></div><div className="mes-shortcut-list">{shortcuts.map(item => <Link to={item.to} key={item.to}><span><strong>{item.title}</strong><small>{item.detail}</small></span><ArrowRight size={17}/></Link>)}</div></section>
+        <section className="panel mes-progress-panel"><div className="mes-panel-head"><h2>生产进度</h2><span>当前可查看工单</span></div><div className="big-number">{data.good_qty}<span> / {data.target_qty} 件合格</span></div><Progress done={data.good_qty} total={data.target_qty}/><div className="mes-progress-facts"><div><span>已审核不良</span><strong>{data.defect_qty} 件</strong></div><div><span>合格完成率</span><strong>{data.target_qty ? Math.min(100, Math.round(data.good_qty / data.target_qty * 100)) : 0}%</strong></div></div><p className="muted">{data.definition}</p></section>
+        <section className="panel mes-orders-panel"><div className="mes-panel-head"><h2>近期工单</h2><Link to="/orders">全部工单 <ArrowRight size={15}/></Link></div><Notice error={orders.error}/>{orders.loading && !orders.data ? <div className="loading">正在加载…</div> : orders.data?.items.length ? <div className="mes-recent-list">{orders.data.items.map(order => <Link to={`/orders/${order.id}`} key={order.id}><span><strong>{order.code} · {order.operation}</strong><small>{order.plan?.product || '未关联产品'} · 合格 {order.goodQty}/{order.targetQty} 件</small></span><span className={`badge ${order.status}`}>{orderStatus[order.status] || order.status}</span></Link>)}</div> : <div className="mes-dashboard-empty">暂无工单<Link to="/orders">查看工单列表</Link></div>}</section>
       </div>
     </>}
-    <div className="mes-dashboard-grid mes-recent-grid">
-      <section className="panel"><div className="mes-panel-head"><h2>近期计划</h2><Link to="/plans">查看全部 <ArrowRight size={15}/></Link></div><Notice error={plans.error}/>{plans.loading && !plans.data ? <div className="loading">正在加载…</div> : plans.data?.items.length ? <div className="mes-recent-list">{plans.data.items.map(plan => <Link to={`/plans/${plan.id}`} key={plan.id}><span><strong>{plan.code} · {plan.product}</strong><small>目标 {plan.targetQty} 件 · 截止 {date(plan.dueAt)}</small></span><span className={`badge ${plan.status}`}>{planStatus[plan.status] || plan.status}</span></Link>)}</div> : <div className="mes-dashboard-empty">暂无计划{canPlan && <Link to="/plans">前往创建计划</Link>}</div>}</section>
-      <section className="panel"><div className="mes-panel-head"><h2>近期工单</h2><Link to="/orders">查看全部 <ArrowRight size={15}/></Link></div><Notice error={orders.error}/>{orders.loading && !orders.data ? <div className="loading">正在加载…</div> : orders.data?.items.length ? <div className="mes-recent-list">{orders.data.items.map(order => <Link to={`/orders/${order.id}`} key={order.id}><span><strong>{order.code} · {order.operation}</strong><small>{order.plan?.product || '未关联产品'} · 合格 {order.goodQty}/{order.targetQty} 件</small></span><span className={`badge ${order.status}`}>{orderStatus[order.status] || order.status}</span></Link>)}</div> : <div className="mes-dashboard-empty">暂无工单<Link to="/orders">查看工单列表</Link></div>}</section>
-    </div>
+    <section className="panel mes-plans-panel"><div className="mes-panel-head"><h2>近期计划</h2><Link to="/plans">全部计划 <ArrowRight size={15}/></Link></div><Notice error={plans.error}/>{plans.loading && !plans.data ? <div className="loading">正在加载…</div> : plans.data?.items.length ? <div className="mes-recent-list">{plans.data.items.map(plan => <Link to={`/plans/${plan.id}`} key={plan.id}><span><strong>{plan.code} · {plan.product}</strong><small>目标 {plan.targetQty} 件 · 截止 {date(plan.dueAt)}</small></span><span className={`badge ${plan.status}`}>{planStatus[plan.status] || plan.status}</span></Link>)}</div> : <div className="mes-dashboard-empty">暂无计划{canPlan && <Link to="/plans">前往创建计划</Link>}</div>}</section>
   </div>;
 }
 function PlansPage({ session }: { session: Session }) {
