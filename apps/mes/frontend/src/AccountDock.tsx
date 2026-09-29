@@ -17,8 +17,7 @@ export function AccountDock({ name, email, role, onLogout }: { name: string; ema
   }, [open]);
   return <div className="account-dock" ref={dock}>
     {open && <div id="account-popover" className="account-popover" aria-label="账号菜单">
-      <div className="account-popover-head"><span className="account-popover-avatar" aria-hidden="true">{name.slice(0, 1) || <UserRound size={18}/>}</span><div><strong>{name}</strong>{email && <small>{email}</small>}</div></div>
-      <span className="account-role">{role}</span>
+      <div className="account-popover-head"><span className="account-popover-avatar" aria-hidden="true">{name.slice(0, 1) || <UserRound size={18}/>}</span><div className="account-popover-details"><div className="account-popover-name"><strong title={name}>{name}</strong><span className="account-role">{role}</span></div>{email && <small title={email}>{email}</small>}</div></div>
       <div className="account-popover-actions"><Link to="/settings" onClick={() => setOpen(false)}><Settings size={17}/>设置</Link><button type="button" onClick={() => { setOpen(false); onLogout(); }}><LogOut size={17}/>退出登录</button></div>
     </div>}
     <button type="button" className="account-identity" aria-label={`${name}，打开账号菜单`} aria-expanded={open} aria-controls={open ? "account-popover" : undefined} onClick={() => setOpen(value => !value)}>
